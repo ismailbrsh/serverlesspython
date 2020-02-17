@@ -1,0 +1,45 @@
+service: messenger-backend
+
+frameworkVersion: ">=1.50.0 <2.0.0"
+
+custom: ${file(./vars/${opt:stage, 'dev'}.yml)}
+
+functions:
+  create_campaign:
+    handler: functions/campaign/main.create
+    role: ${self:custom.changePasswordLambdaRoleArn}
+    vpc:
+      securityGroupIds:
+        - ${self:custom.changePasswordSecurityGroupId}
+      subnetIds: ${self:custom.privateSubnetIds}
+    events:
+      - http:
+          path: /campaign
+          method: post
+          cors: true
+
+provider:
+  name: aws
+  region: ${env:AWS_DEFAULT_REGION, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  runtime: python3.7
+  logRetentionInDays: ${self:custom.lambdaLogRetention}
+  environment:
+    SLS_DEBUG: true
+    STAGE: ${self:provider.stage}
+    DBHOST: ${self:custom.DBHost}
+    DBUSER: ${self:custom.DBUser}
+    DBPASS: ${self:custom.DBPass}
+    DBNAME: ${self:custom.DBName}
+
+package:
+  individually: true
+  exclude:
+    - requirements.txt
+    - serverless.yml
+
+plugins:
+  - serverless-python-requirements
+  - serverless-plugin-aws-alerts
+  - serverless-offline
